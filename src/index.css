@@ -12,10 +12,24 @@
   --color-brand-glow: rgba(99, 102, 241, 0.15);
 }
 
-/* Custom Scrollbar */
+/* Prevent elastic page drag/overscroll bounce (revealing black/white background gap) */
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  margin: 0;
+  padding: 0;
+  touch-action: pan-y; /* disables horizontal drag-to-refresh / swipe navigation gesture */
+}
+
+/* Custom Ultra-Sleek Professional Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -23,12 +37,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.25);
+  background: rgba(99, 102, 241, 0.18);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.45);
+  background: rgba(99, 102, 241, 0.4);
 }
 
 /* Smooth Interactive Elements */

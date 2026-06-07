@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Play, 
   Sparkles, 
@@ -11,8 +11,11 @@ import {
   ArrowRight,
   ChevronRight,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Flame,
+  Sliders
 } from "lucide-react";
+import { motion } from "motion/react";
 import { db } from "../services/databaseService";
 import { gemini } from "../services/geminiService";
 import { DB_Subject, DB_Topic, DB_StudySession } from "../types";
@@ -74,6 +77,145 @@ export default function HomeScreen({ onStartTimer, onStartQuiz, isDarkMode }: Ho
     }
   }, [selectedSubjectId]);
 
+  // Heuristic Weakest Subject + Topic Recommendation
+  const recommendation = useMemo(() => {
+    if (subjects.length === 0) return null;
+
+    const allMistakes = db.getMistakes();
+    const allSessions = db.getStudySessions();
+    
+    // Retrieve tests from local storage manually if available
+    let allTests: any[] = [];
+    try {
+      const rawTests = localStorage.getItem("sokrates_db_generated_tests");
+      if (rawTests) {
+        allTests = JSON.parse(rawTests);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const docs = db.getDocuments();
+
+    // Map each subject to its scores/mistakes/study metadata
+    const scores = subjects.map(sub => {
+      // Find documents assigned to this subject (checking name mapping)
+      const subDocs = docs.filter(d => 
+        d.detected_subject && d.detected_subject.toLowerCase().trim() === sub.name.toLowerCase().trim()
+      );
+      const subDocIds = subDocs.map(d => d.id);
+
+      // Find tests with scores
+      const subTests = allTests.filter(t => 
+        (subDocIds.includes(t.document_id) || t.subject_id === sub.id) && t.score !== undefined
+      );
+
+      let baseScore = 95; // Starting point if no tests
+      let hasTests = false;
+      if (subTests.length > 0) {
+        const total = subTests.reduce((acc, t) => acc + (t.score || 0), 0);
+        baseScore = total / subTests.length;
+        hasTests = true;
+      }
+
+      // Mistakes count
+      const subMistakes = allMistakes.filter(m => m.subject_id === sub.id);
+      const unresolved = subMistakes.filter(m => !m.is_resolved);
+      const resolved = subMistakes.filter(m => m.is_resolved);
+
+      // Final score deduction formula
+      let finalScore = baseScore - (unresolved.length * 15) - (resolved.length * 3);
+
+      // Check cumulative study duration in past logs
+      const subSessions = allSessions.filter(s => s.subject_id === sub.id);
+      const totalStudySec = subSessions.reduce((acc, s) => acc + s.duration_seconds, 0);
+
+      // If they have unresolved mistakes but haven't studied in the last 7 days, apply neglect penalty
+      const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      const recentSessions = subSessions.filter(s => new Date(s.started_at).getTime() >= oneWeekAgo);
+      const recentStudySec = recentSessions.reduce((acc, s) => acc + s.duration_seconds, 0);
+
+      if (unresolved.length > 0 && recentStudySec === 0) {
+        finalScore -= 10; // neglect penalty
+      }
+
+      // Bound score safely between 5 and 100
+      finalScore = Math.max(5, Math.min(100, Math.round(finalScore)));
+
+      return {
+        subject: sub,
+        finalScore,
+        unresolved,
+        resolved,
+        totalStudySec,
+        hasTests
+      };
+    });
+
+    // Sort to find the weakest (lowest score first)
+    scores.sort((a, b) => {
+      if (a.finalScore !== b.finalScore) {
+        return a.finalScore - b.finalScore;
+      }
+      if (b.unresolved.length !== a.unresolved.length) {
+        return b.unresolved.length - a.unresolved.length; // more unresolved is weaker
+      }
+      return a.totalStudySec - b.totalStudySec; // less study time is weaker
+    });
+
+    const weakest = scores[0];
+    if (!weakest) return null;
+
+    // Resolve the best theme-focused topic to recommend next
+    const subTopics = db.getTopics(weakest.subject.id);
+    let recommendedTopic: DB_Topic | undefined;
+
+    if (subTopics.length > 0) {
+      // Find unresolved mistake density by topic
+      const topicMistakes = subTopics.map(t => {
+        const count = weakest.unresolved.filter(m => m.topic_id === t.id).length;
+        return { topic: t, count };
+      });
+      topicMistakes.sort((a, b) => b.count - a.count);
+
+      if (topicMistakes[0] && topicMistakes[0].count > 0) {
+        recommendedTopic = topicMistakes[0].topic;
+      } else {
+        // Fallback: pick the topic with minimal logged focus timing
+        const topicStudyTimes = subTopics.map(t => {
+          const time = allSessions
+            .filter(s => s.topic_id === t.id)
+            .reduce((acc, s) => acc + s.duration_seconds, 0);
+          return { topic: t, time };
+        });
+        topicStudyTimes.sort((a, b) => a.time - b.time);
+        recommendedTopic = topicStudyTimes[0]?.topic;
+      }
+    }
+
+    // Dynamic rational justification
+    let reason = "";
+    if (weakest.unresolved.length > 0) {
+      reason = `Bu branşa ait henüz çözülmemiş ${weakest.unresolved.length} adet soru hatanız bulunmaktadır. Yanlışların üzerinden geçmek netinizi hızlıca yükseltecektir.`;
+    } else if (weakest.hasTests && weakest.finalScore < 75) {
+      reason = `Bu derse ait testlerdeki başarı ortalamanız (%${weakest.finalScore}) hedefinizin altında kalarak ek ilgi talep ediyor.`;
+    } else if (weakest.totalStudySec === 0) {
+      reason = `Bu derste henüz hiçbir çalışma oturumu tamamlamadınız. Dengeli bir sınav hazırlığı için bugün ilk adımı atabilirsiniz.`;
+    } else {
+      reason = `Bu konudaki çalışma sıklığınız son dönemde düşüşe geçmiştir. Kalıcı öğrenme ve hafıza tazelemek amacıyla tekrar yapmanız tavsiye edilir.`;
+    }
+
+    return {
+      subjectId: weakest.subject.id,
+      subjectName: weakest.subject.name,
+      subjectColor: weakest.subject.color,
+      topicId: recommendedTopic?.id || "",
+      topicName: recommendedTopic?.name || "Genel Tekrar",
+      successScore: weakest.finalScore,
+      reason
+    };
+  }, [subjects, todaySeconds, weeklySeconds, recentSessions]);
+
   const handleQuickStart = () => {
     if (!selectedSubjectId) return;
     onStartTimer(selectedSubjectId, selectedTopicId || undefined);
@@ -118,15 +260,15 @@ export default function HomeScreen({ onStartTimer, onStartQuiz, isDarkMode }: Ho
             Yerel Ders Çalışma Koçu ve Sınav Asistanı • Çevrimdışı Bellek Destekli
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
+        <div className="flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full shrink-0">
           <Sparkles className="w-3 h-3 text-indigo-400 animate-pulse" />
           <span className="text-[10px] uppercase font-mono tracking-widest text-indigo-300">Sokrates AI</span>
         </div>
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <div id="stats-card-today" className={`p-4 rounded-[20px] border flex flex-col gap-1 transition-all hover:scale-[1.01] ${isDarkMode ? "bg-slate-900/60 border-white/5" : "bg-white border-slate-100 shadow-sm"}`}>
+      <div className="grid grid-cols-2 gap-4 shrink-0">
+        <div id="stats-card-today" className={`p-4 rounded-[20px] border flex flex-col gap-1 transition-all hover:scale-[1.01] shrink-0 ${isDarkMode ? "bg-slate-900/60 border-white/5" : "bg-white border-slate-100 shadow-sm"}`}>
           <div className="flex items-center justify-between text-indigo-400">
             <Clock className="w-5 h-5" />
             <span className="text-[10px] font-mono tracking-wider uppercase text-slate-500">Bugün</span>
@@ -137,7 +279,7 @@ export default function HomeScreen({ onStartTimer, onStartQuiz, isDarkMode }: Ho
           <span className="text-[11px] text-gray-500">Net Odak Süresi</span>
         </div>
 
-        <div id="stats-card-weekly" className={`p-4 rounded-[20px] border flex flex-col gap-1 transition-all hover:scale-[1.01] ${isDarkMode ? "bg-slate-900/60 border-white/5" : "bg-white border-slate-100 shadow-sm"}`}>
+        <div id="stats-card-weekly" className={`p-4 rounded-[20px] border flex flex-col gap-1 transition-all hover:scale-[1.01] shrink-0 ${isDarkMode ? "bg-slate-900/60 border-white/5" : "bg-white border-slate-100 shadow-sm"}`}>
           <div className="flex items-center justify-between text-emerald-400">
             <TrendingUp className="w-5 h-5" />
             <span className="text-[10px] font-mono tracking-wider uppercase text-slate-500">Son 7 Gün</span>
@@ -195,12 +337,98 @@ export default function HomeScreen({ onStartTimer, onStartQuiz, isDarkMode }: Ho
         <button
           onClick={handleQuickStart}
           disabled={!selectedSubjectId}
-          className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 transition-all font-bold text-xs py-3 text-white rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1 disabled:opacity-50"
+          className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 transition-all font-bold text-xs py-3 text-white rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1 disabled:opacity-50 cursor-pointer text-center"
         >
           <Play className="w-4 h-4 fill-current text-white" />
           Odaklanmayı Başlat
         </button>
       </div>
+
+      {/* Smart Weak Subject recommendation Card */}
+      {recommendation && (
+        <motion.div
+          id="smart-recommendation-card"
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className={`p-5 rounded-[24px] border relative overflow-hidden flex flex-col gap-3 transition-all shrink-0 ${
+            isDarkMode 
+              ? "bg-gradient-to-br from-red-500/10 via-amber-500/5 to-slate-900/40 border-red-500/20" 
+              : "bg-gradient-to-br from-red-50/75 to-amber-50/40 border-red-100 shadow-sm"
+          }`}
+        >
+          {/* Subtle Ambient Glow Effect inside the card */}
+          {isDarkMode && (
+            <div className="absolute -top-12 -right-12 w-28 h-28 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          )}
+
+          <div className="flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <div className={`p-1.5 rounded-xl ${isDarkMode ? "bg-red-500/20 text-red-400" : "bg-red-105 text-red-600"}`}>
+                <Flame className="w-4 h-4 animate-pulse fill-current text-red-400" />
+              </div>
+              <span className={`text-[11px] font-extrabold tracking-wider uppercase font-mono ${isDarkMode ? "text-red-400" : "text-red-600"}`}>
+                Yapay Zeka Çalışma Tavsiyesi
+              </span>
+            </div>
+
+            {/* Success Score Badge Indicator */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] uppercase font-mono text-gray-400 tracking-wider">Başarı:</span>
+              <span 
+                className={`text-xs font-black font-mono px-2 py-0.5 rounded-full ${
+                  recommendation.successScore < 50
+                    ? "bg-red-500/15 text-red-400 border border-red-500/20"
+                    : recommendation.successScore < 75
+                    ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                    : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                }`}
+              >
+                %{recommendation.successScore}
+              </span>
+            </div>
+          </div>
+
+          <p className={`text-xs leading-relaxed ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>
+            Sistemdeki son çalışma istatistiklerine ve çözdüğün test sonuçlarına göre, <span className="font-extrabold text-indigo-400 underline">{recommendation.subjectName}</span> dersine ait <span className="font-extrabold text-indigo-400">{recommendation.topicName}</span> konusunda başarı oranının ortalamanın altında olduğunu tespit ettik. Hem bilgini tazelemek hem de zayıf noktalarını gidermek için bugün bu konuyu çalışmalısın.
+          </p>
+
+          <div className="flex gap-2.5 mt-1 shrink-0">
+            <button
+              onClick={() => {
+                // Pre-fills form subject & topic, then scroll smooth to form
+                setSelectedSubjectId(recommendation.subjectId);
+                if (recommendation.topicId) {
+                  setSelectedTopicId(recommendation.topicId);
+                  const formEl = document.getElementById("home-quick-start");
+                  if (formEl) {
+                    formEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }
+              }}
+              className={`flex-grow flex-1 text-[11px] font-bold py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                isDarkMode 
+                  ? "bg-slate-800/80 hover:bg-slate-700/80 text-white border-white/5 active:scale-98" 
+                  : "bg-white hover:bg-slate-50 text-slate-800 border-slate-200 active:scale-98 shadow-xs"
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Ders Seçimini Ayarla</span>
+            </button>
+
+            <button
+              onClick={() => {
+                // Instant launch timer with one tap!
+                onStartTimer(recommendation.subjectId, recommendation.topicId || undefined);
+              }}
+              className="flex-grow flex-1 text-[11px] font-black py-2.5 px-3 text-slate-950 bg-amber-400 hover:bg-amber-300 transition-all rounded-xl flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shadow-sm"
+            >
+              <Play className="w-3 h-3 fill-current text-slate-950" />
+              <span>Hemen Odaklan</span>
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Quick Quiz Entry Widget */}
       <div 

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { db, DB_AppSettings } from "../services/databaseService";
 import { DB_Subject, DB_Topic } from "../types";
+import { gemini } from "../services/geminiService";
 
 interface SettingsScreenProps {
   onSettingsChange: () => void;
@@ -29,6 +30,32 @@ export default function SettingsScreen({ onSettingsChange, isDarkMode, onToggleT
   const [selectedModel, setSelectedModel] = useState<any>("gemini-3.1-flash-lite");
   const [explanationLevel, setExplanationLevel] = useState<"Ekonomik" | "Dengeli" | "Kaliteli">("Ekonomik");
   const [economyMode, setEconomyMode] = useState<boolean>(true);
+
+  // API key validity testing states
+  const [validationState, setValidationState] = useState<"not_tested" | "validating" | "valid" | "invalid">("not_tested");
+  const [validationError, setValidationError] = useState<string>("");
+
+  const checkKeyValidity = async (keyToTest: string) => {
+    if (!keyToTest.trim()) {
+      setValidationState("not_tested");
+      setValidationError("");
+      return;
+    }
+    setValidationState("validating");
+    try {
+      const result = await gemini.validateApiKey(keyToTest.trim());
+      if (result.valid) {
+        setValidationState("valid");
+        setValidationError("");
+      } else {
+        setValidationState("invalid");
+        setValidationError(result.error || "Geçersiz API Anahtarı.");
+      }
+    } catch (e: any) {
+      setValidationState("invalid");
+      setValidationError("Bağlantı hatası: " + (e.message || ""));
+    }
+  };
 
   // Subject and Topic Insertion Management
   const [subjects, setSubjects] = useState<DB_Subject[]>([]);
@@ -45,10 +72,15 @@ export default function SettingsScreen({ onSettingsChange, isDarkMode, onToggleT
   useEffect(() => {
     // Load current app settings
     const settings = db.getSettings();
-    setApiKey(settings.gemini_api_key || "");
+    const storedKey = settings.gemini_api_key || "";
+    setApiKey(storedKey);
     setSelectedModel(settings.selected_model || "gemini-3.1-flash-lite");
     setExplanationLevel(settings.explanation_level || "Ekonomik");
     setEconomyMode(settings.economy_mode_enabled !== false);
+
+    if (storedKey) {
+      checkKeyValidity(storedKey);
+    }
 
     // Load subjects
     const list = db.getSubjects();
@@ -160,16 +192,74 @@ export default function SettingsScreen({ onSettingsChange, isDarkMode, onToggleT
 
         <div className="flex flex-col gap-3.5 text-xs">
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Gemini API Key</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="AIzaSy..."
-              className={`p-3 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-white border-slate-205 text-slate-800"}`}
-            />
-            <p className="text-[9px] text-gray-500 leading-tight">
-              API Anahtarınız güvenli bir şekilde telefonunuzun yerel hafızasında tutulur. Başka bir sunucuyla kesinlikle paylaşılmaz.
+            <div className="flex justify-between items-center sm:flex-row flex-col gap-1.5 mb-1">
+              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Gemini API Key</label>
+              
+              {/* STATUS INDICATOR DOT */}
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                {validationState === "validating" && (
+                  <span className="flex items-center gap-1.5 text-[10px] text-yellow-500 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping inline-block" />
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 -ml-3.5 inline-block" />
+                    Doğrulanıyor...
+                  </span>
+                )}
+                {validationState === "valid" && (
+                  <span className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] inline-block" />
+                    Aktif ve Hazır
+                  </span>
+                )}
+                {validationState === "invalid" && (
+                  <span className="flex items-center gap-1.5 text-[10px] text-rose-400 font-bold" title={validationError}>
+                    <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)] inline-block" />
+                    Hatalı / Pasif
+                  </span>
+                )}
+                {validationState === "not_tested" && (
+                  <span className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-gray-500 inline-block" />
+                    Doğrulanmadı
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setValidationState("not_tested");
+                }}
+                placeholder="AIzaSy..."
+                className={`p-3 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1 text-xs tracking-widest ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+              />
+              <button
+                type="button"
+                onClick={() => checkKeyValidity(apiKey)}
+                disabled={validationState === "validating" || !apiKey.trim()}
+                className={`px-4 rounded-xl font-bold text-[10px] uppercase transition-all duration-200 cursor-pointer ${
+                  validationState === "validating"
+                    ? "bg-slate-800 text-gray-500 cursor-not-allowed"
+                    : !apiKey.trim()
+                    ? "bg-slate-800/40 text-gray-500 cursor-not-allowed border border-white/5"
+                    : "bg-indigo-600 hover:bg-indigo-505 text-white active:scale-95 shadow-md shadow-indigo-600/20"
+                }`}
+              >
+                Doğrula
+              </button>
+            </div>
+
+            {validationState === "invalid" && validationError && (
+              <div className="text-[10px] text-rose-400 bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-xl mt-1 leading-relaxed">
+                <span className="font-bold">Hata Ayrıntısı:</span> {validationError}
+              </div>
+            )}
+
+            <p className="text-[9px] text-gray-500 leading-tight mt-1">
+              API Anahtarınız güvenli bir şekilde tarayıcınızın yerel hafızasında tutulur. Başka bir sunucuyla kesinlikle paylaşılmaz.
             </p>
           </div>
 
@@ -204,9 +294,9 @@ export default function SettingsScreen({ onSettingsChange, isDarkMode, onToggleT
             >
               <optgroup label="Ekonomik Mod Modelleri">
                 <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Hızlı & Hesaplı)</option>
-                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (Kararlı LITE)</option>
               </optgroup>
               <optgroup label="Dengeli Mod Modelleri">
+                <option value="gemini-3.5-flash">gemini-3.5-flash (Önerilen / Akıllı & Dengeli)</option>
                 <option value="gemini-2.5-flash">gemini-2.5-flash (Standart Flash)</option>
               </optgroup>
               <optgroup label="Kaliteli Mod Modelleri">

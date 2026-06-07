@@ -29,9 +29,12 @@ import {
   User, 
   Lock, 
   Unlock,
-  Variable
+  Variable,
+  Menu,
+  X
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { motion, AnimatePresence } from "motion/react";
 import MobileFrame from "./components/MobileFrame";
 import SettingsTab from "./components/SettingsTab";
 import MarkdownView from "./components/MarkdownView";
@@ -78,7 +81,7 @@ export default function App() {
       theme: dbSettings.theme || "dark",
       language: dbSettings.answer_language || "tr",
       explanationMode: dbSettings.explanation_level === "Ekonomik" ? "simple" : dbSettings.explanation_level === "Dengeli" ? "student" : "professional",
-      selected_model: dbSettings.selected_model || "gemini-2.5-flash-lite",
+      selected_model: dbSettings.selected_model || "gemini-3.1-flash-lite",
       explanation_level: dbSettings.explanation_level || "Ekonomik",
       api_reduction_mode: dbSettings.economy_mode_enabled !== false
     };
@@ -95,6 +98,7 @@ export default function App() {
 
   // Active Screen / Tab
   const [activeTab, setActiveTab] = useState<TabName>("home");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [analysisSubTab, setAnalysisSubTab] = useState<"pdf" | "library">("pdf");
 
   // PDF Extract Loading progress State
@@ -863,8 +867,156 @@ export default function App() {
 
   return (
     <MobileFrame theme={theme} toggleTheme={toggleTheme}>
-      {/* Scrollable Container Wrapper with safe flex bounds */}
-      <div className={`flex flex-col flex-1 h-full font-sans transition-colors duration-300 ${isDarkMode ? "bg-[#070913] text-gray-100" : "bg-slate-50 text-slate-800"}`}>
+      {/* Scrollable Container Wrapper with safe flex bounds - Col layout for precise mobile vibe */}
+      <div className={`flex flex-col flex-1 h-full font-sans transition-colors duration-300 overflow-hidden relative ${isDarkMode ? "bg-[#070913] text-gray-100" : "bg-slate-50 text-slate-800"}`}>
+        
+        {/* Top Navbar / Mobile Header */}
+        <header className={`shrink-0 flex items-center justify-between px-3 py-3 border-b z-20 ${isDarkMode ? "bg-[#0b0c16]/95 border-white/5" : "bg-white/95 border-slate-200/80"}`}>
+          {/* Owl Hamburger Button */}
+          <button 
+            onClick={() => setIsMenuOpen(true)}
+            className={`flex items-center justify-center p-2 rounded-xl active:scale-95 transition-all ${isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-100"}`}
+          >
+            <span className="text-xl" title="Sokrates PDF">🦉</span>
+          </button>
+          
+          <div className="font-bold tracking-widest text-[11px] sm:text-xs">
+            SOKRATES PDF
+          </div>
+          
+          <div className="w-9" /> {/* Placeholder to center the title icon */}
+        </header>
+
+        {/* Slide-Out Drawer Overlay with Framer Motion wrapper */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <div className="absolute inset-0 z-[100] flex">
+              {/* Backdrop */}
+              <motion.div 
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsMenuOpen(false)}
+              />
+              
+              {/* Drawer Surface */}
+              <motion.div 
+                className={`relative w-64 max-w-[80vw] h-full shadow-2xl flex flex-col ${isDarkMode ? "bg-[#0b0c16] border-r border-white/10" : "bg-white border-r border-slate-200"}`}
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                 {/* Drawer Header */}
+                 <div className="px-5 py-5 flex items-center justify-between border-b border-white/5 border-slate-200">
+                   <div className="flex items-center gap-2">
+                     <span className="text-2xl animate-pulse">🦉</span>
+                     <span className="font-bold text-xs tracking-widest text-indigo-400">SOKRATES</span>
+                   </div>
+                   <button 
+                     onClick={() => setIsMenuOpen(false)} 
+                     className={`p-2 rounded-full active:scale-90 ${isDarkMode ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}
+                   >
+                     <X className="w-4 h-4" />
+                   </button>
+                 </div>
+
+                 {/* Navigation List Array */}
+                 <nav className="flex-1 overflow-y-auto w-full py-4 px-3 flex flex-col gap-1.5 no-scrollbar">
+                   <button
+                     onClick={() => { setActiveTab("home"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "home" ? "text-indigo-400 font-extrabold bg-indigo-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-xl w-6">🏠</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Giriş</span>
+                   </button>
+
+                   <button
+                     onClick={() => { setActiveTab("timer"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "timer" ? "text-indigo-400 font-extrabold bg-indigo-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-xl w-6">⏱</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Sayaç</span>
+                   </button>
+
+                   <button
+                     onClick={() => { setActiveTab("coach"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "coach" ? "text-indigo-400 font-extrabold bg-indigo-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-xl w-6">🧠</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Koç</span>
+                   </button>
+
+                   <button
+                     onClick={() => { setActiveTab("analysis"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "analysis" || activeTab === "chat" || activeTab === "test" ? "text-indigo-400 font-extrabold bg-indigo-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <div className="relative w-6">
+                       <span className="text-xl">📚</span>
+                       {currentPDF && <span className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 rounded-full animate-ping"></span>}
+                     </div>
+                     <span className="text-xs font-bold tracking-widest uppercase">Belge</span>
+                   </button>
+
+                   <button
+                     onClick={() => { setActiveTab("stats"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "stats" ? "text-indigo-400 font-extrabold bg-indigo-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-xl w-6">📊</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Rapor</span>
+                   </button>
+
+                   <button
+                     onClick={() => { setActiveTab("quiz"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "quiz" ? "text-amber-400 font-extrabold bg-amber-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-xl w-6">📝</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Quiz</span>
+                   </button>
+
+                   <button
+                     onClick={() => { setActiveTab("flashcards"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer ${
+                       activeTab === "flashcards" ? "text-red-400 font-extrabold bg-red-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5" : "text-slate-600 hover:bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-xl w-6">🎯</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Yanlışlar</span>
+                   </button>
+                 </nav>
+
+                 <div className="p-4 shrink-0 border-t border-white/5 border-slate-200">
+                   <button
+                     onClick={() => { setActiveTab("settings"); setIsMenuOpen(false); }}
+                     className={`py-3 px-4 w-full flex items-center gap-3 rounded-xl transition-all cursor-pointer justify-center ${
+                       activeTab === "settings" ? "text-indigo-400 font-extrabold bg-indigo-500/10" : `${isDarkMode ? "text-gray-300 hover:bg-white/5 bg-white/5" : "text-slate-600 hover:bg-slate-100 bg-slate-100"}`
+                     }`}
+                   >
+                     <span className="text-lg">⚙️</span>
+                     <span className="text-xs font-bold tracking-widest uppercase">Ayarlar</span>
+                   </button>
+                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* WORKSPACE Container */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
         
         {/* Offline Guard Header Banner */}
         {!isOnline && (
@@ -931,7 +1083,7 @@ export default function App() {
         )}
 
         {/* ------------------------- PAGE SWITCHER INNER LOGIC ------------------------- */}
-        <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-hidden">
 
           {/* PAGE 1: "HOME" */}
           {activeTab === "home" && (
@@ -1541,7 +1693,7 @@ export default function App() {
 
           {/* PAGE 2: "ANALYSIS" */}
           {activeTab === "analysis" && (
-            <div className="p-5 flex flex-col gap-4 flex-1">
+            <div className="p-5 flex flex-col gap-4 flex-1 overflow-y-auto no-scrollbar">
               {/* Segmented Sub-tab Switcher for Premium Math Symbols vs Document Analysis */}
               <div className={`p-1 rounded-2xl grid grid-cols-2 shrink-0 border ${
                 isDarkMode ? "bg-black/40 border-white/5" : "bg-slate-100 border-slate-200"
@@ -1727,39 +1879,54 @@ export default function App() {
                             {savedAnalysis?.summary || savedAnalysis?.studentExplainer || savedAnalysis?.examNotes ? (
                               <div className="space-y-6">
                                 {savedAnalysis.summary && (
-                                  <div className="space-y-2">
+                                  <motion.div 
+                                    className="space-y-2"
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                                  >
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                                      <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                                      <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
                                       Profesyonel Özet Modu
                                     </h3>
                                     <div className="pl-3.5 border-l border-indigo-500/20">
                                       <MarkdownView content={savedAnalysis.summary} />
                                     </div>
-                                  </div>
+                                  </motion.div>
                                 )}
 
                                 {savedAnalysis.studentExplainer && (
-                                  <div className="space-y-2 pt-4 border-t border-white/5">
+                                  <motion.div 
+                                    className="space-y-2 pt-4 border-t border-white/5"
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                                  >
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
-                                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
                                       Öğrenci Dili Anlatım Akışı
                                     </h3>
                                     <div className="pl-3.5 border-l border-orange-400/20">
                                       <MarkdownView content={savedAnalysis.studentExplainer} />
                                     </div>
-                                  </div>
+                                  </motion.div>
                                 )}
 
                                 {savedAnalysis.examNotes && (
-                                  <div className="space-y-2 pt-4 border-t border-white/5">
+                                  <motion.div 
+                                    className="space-y-2 pt-4 border-t border-white/5"
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                                  >
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                                      <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+                                      <span className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></span>
                                       Sınav Hedefli Kritik Analiz
                                     </h3>
                                     <div className="pl-3.5 border-l border-purple-400/20">
                                       <MarkdownView content={savedAnalysis.examNotes} />
                                     </div>
-                                  </div>
+                                  </motion.div>
                                 )}
                               </div>
                             ) : (
@@ -2244,7 +2411,7 @@ export default function App() {
 
           {/* PAGE 4: "TEST / QUIZ" */}
           {activeTab === "test" && (
-            <div className="p-5 flex flex-col flex-1 min-h-0 gap-4">
+            <div className="p-5 flex flex-col flex-1 gap-4 overflow-y-auto no-scrollbar">
               {currentPDF ? (
                 <>
                   {/* Sub Header setup selector when activeTest is null */}
@@ -2599,109 +2766,8 @@ export default function App() {
 
         </div>
 
-        {/* ------------------------- BOTTOM ANDROID NAVIGATION TAB SYSTEM ------------------------- */}
-        <nav className={`w-full grid grid-cols-8 border-t shrink-0 select-none z-30 transition-all ${
-          isDarkMode 
-            ? "bg-[#0b0c16]/95 border-white/5 shadow-[0_-5px_20px_rgba(0,0,0,0.4)]" 
-            : "bg-white/95 border-slate-200/80 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]"
-        }`}>
-          {/* 1. Home Tab */}
-          <button
-            onClick={() => setActiveTab("home")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "home" ? "text-indigo-400 font-extrabold" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">🏠</span>
-            <span className="text-[8px] font-bold tracking-tight">Giriş</span>
-          </button>
-
-          {/* 2. Timer Tab */}
-          <button
-            onClick={() => setActiveTab("timer")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "timer" ? "text-indigo-400 font-extrabold" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">⏱</span>
-            <span className="text-[8px] font-bold tracking-tight">Sayaç</span>
-          </button>
-
-          {/* 3. Coach Tab */}
-          <button
-            onClick={() => setActiveTab("coach")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "coach" ? "text-indigo-400 font-extrabold" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">🧠</span>
-            <span className="text-[8px] font-bold tracking-tight">Koç</span>
-          </button>
-
-          {/* 4. Analysis Tab */}
-          <button
-            onClick={() => setActiveTab("analysis")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "analysis" || activeTab === "chat" || activeTab === "test"
-                ? "text-indigo-400 font-extrabold" 
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <div className="relative">
-              <span className="text-sm select-none">📚</span>
-              {currentPDF && (
-                <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full animate-ping"></span>
-              )}
-            </div>
-            <span className="text-[8px] font-bold tracking-tight">Belge</span>
-          </button>
-
-          {/* 5. Stats Tab */}
-          <button
-            onClick={() => setActiveTab("stats")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "stats" ? "text-indigo-450 font-extrabold" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">📊</span>
-            <span className="text-[8px] font-bold tracking-tight">Rapor</span>
-          </button>
-
-          {/* 6. Quiz Tab */}
-          <button
-            onClick={() => setActiveTab("quiz")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "quiz" ? "text-amber-400 font-extrabold scale-105" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">📝</span>
-            <span className="text-[8px] font-bold tracking-tight">Quiz</span>
-          </button>
-
-          {/* 7. Soru-Cevap Yanlış Analiz Defteri Tab */}
-          <button
-            onClick={() => setActiveTab("flashcards")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "flashcards" ? "text-red-400 font-extrabold scale-105" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">🎯</span>
-            <span className="text-[8px] font-bold tracking-tight">Y. Defteri</span>
-          </button>
-
-          {/* 8. Settings Tab */}
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`py-2.5 flex flex-col items-center justify-center gap-1 select-none transition-transform cursor-pointer ${
-              activeTab === "settings" ? "text-indigo-400 font-extrabold" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            <span className="text-sm select-none">⚙️</span>
-            <span className="text-[8px] font-bold tracking-tight">Ayar</span>
-          </button>
-        </nav>
-
       </div>
-    </MobileFrame>
+    </div>
+  </MobileFrame>
   );
 }

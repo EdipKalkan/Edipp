@@ -676,8 +676,27 @@ Lütfen 'definition' hücresine sadece bu 3 parçayı " ||| " ile ayırarak yerl
     this.apiCache.set(cacheKey, output);
 
     this.logUsage(promptType, text.length + cleanPrompt.length, output.length, model);
-
     return output;
+  }
+
+  /**
+   * Validate if the given API key is active and ready
+   */
+  static async validateApiKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const res = await fetch("/api/gemini/validate-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { valid: false, error: err.error || "Ağ veya sunucu hatası oluştu." };
+      }
+      return await res.json();
+    } catch (e: any) {
+      return { valid: false, error: e.message || "İnternet bağlantı hatası." };
+    }
   }
 }
 

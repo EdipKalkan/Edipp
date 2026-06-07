@@ -118,7 +118,7 @@ export interface DB_UserStudyStats {
 
 export interface DB_AppSettings {
   gemini_api_key: string;
-  selected_model: "gemini-3.1-flash-lite" | "gemini-2.5-flash-lite" | "gemini-2.5-flash" | "gemini-3.1-pro-preview";
+  selected_model: "gemini-3.1-flash-lite" | "gemini-3.5-flash" | "gemini-2.5-flash" | "gemini-3.1-pro-preview";
   answer_language: string;
   explanation_level: "Ekonomik" | "Dengeli" | "Kaliteli";
   theme: "dark" | "light";

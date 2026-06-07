@@ -33,6 +33,41 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
 
+// API Key Validation Helper
+app.post("/api/gemini/validate-key", async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    if (!apiKey || apiKey.trim() === "") {
+      return res.json({ valid: false, error: "API anahtarı boş olamaz." });
+    }
+    
+    const ai = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: "Hi",
+      config: {
+        maxOutputTokens: 2,
+      },
+    });
+
+    if (response) {
+      return res.json({ valid: true });
+    }
+    return res.json({ valid: false, error: "Boş veya hatalı yanıt alındı." });
+  } catch (error: any) {
+    console.error("API Key validation error:", error);
+    return res.json({ valid: false, error: error.message || "Geçersiz API Anahtarı veya ağ bağlantı hatası." });
+  }
+});
+
 // 1. General prompt proxy (Summary, student explanation, exam mode)
 app.post("/api/gemini/prompt", async (req, res) => {
   try {
@@ -131,7 +166,7 @@ ${text}`;
       systemInstruction += " Yanıtlarını 10 yaşındaki bir çocuğun bile anlayabileceği derecede basit, kısa cümlelerle oluştur.";
     }
 
-    const selectedModel = req.body.model || "gemini-2.5-flash-lite";
+    const selectedModel = req.body.model || "gemini-3.1-flash-lite";
 
     const isJsonMode = promptType === "flashcards";
     const config: any = {
@@ -201,7 +236,7 @@ Soru çözümü/açıklaması (explanation) anlaşılır biçimde açıklanmalı
 PDF İçeriği:
 ${text}`;
 
-    const selectedModel = req.body.model || "gemini-2.5-flash-lite";
+    const selectedModel = req.body.model || "gemini-3.1-flash-lite";
 
     const response = await ai.models.generateContent({
       model: selectedModel,

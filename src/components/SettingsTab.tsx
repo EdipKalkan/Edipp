@@ -30,7 +30,7 @@ export default function SettingsTab({ settings, onSaveSettings, onClearCache }: 
   const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey);
   const [explanationMode, setExplanationMode] = useState<ExplanationMode>(settings.explanationMode);
   const [themeState, setThemeState] = useState(settings.theme);
-  const [selectedModel, setSelectedModel] = useState<string>(settings.selected_model || "gemini-2.5-flash-lite");
+  const [selectedModel, setSelectedModel] = useState<string>(settings.selected_model || "gemini-3.1-flash-lite");
   const [explanationLevel, setExplanationLevel] = useState<"Ekonomik" | "Dengeli" | "Kaliteli">(
     settings.explanation_level || "Ekonomik"
   );
@@ -54,13 +54,13 @@ export default function SettingsTab({ settings, onSaveSettings, onClearCache }: 
   const handleLevelChange = (level: "Ekonomik" | "Dengeli" | "Kaliteli") => {
     setExplanationLevel(level);
     if (level === "Ekonomik") {
-      setSelectedModel("gemini-2.5-flash-lite");
+      setSelectedModel("gemini-3.1-flash-lite");
       setApiReductionMode(true);
     } else if (level === "Dengeli") {
       setSelectedModel("gemini-2.5-flash");
       setApiReductionMode(false);
     } else if (level === "Kaliteli") {
-      setSelectedModel("gemini-1.5-pro");
+      setSelectedModel("gemini-3.1-pro-preview");
       setApiReductionMode(false);
     }
   };
@@ -169,7 +169,7 @@ export default function SettingsTab({ settings, onSaveSettings, onClearCache }: 
 
         {explanationLevel === "Ekonomik" && (
           <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 text-[10px] leading-relaxed">
-            🌿 <strong>Ekonomik Mod Aktif:</strong> Yanıt boyutları kısıtlanır, testler 5 soru olarak önerilir ve <strong>gemini-2.5-flash-lite</strong> modeli seçilerek yapay zeka masrafları %90 azaltılır.
+            🌿 <strong>Ekonomik Mod Aktif:</strong> Yanıt boyutları kısıtlanır, testler 5 soru olarak önerilir ve <strong>gemini-3.1-flash-lite</strong> modeli seçilerek yapay zeka masrafları %90 azaltılır.
           </div>
         )}
 
@@ -213,10 +213,10 @@ export default function SettingsTab({ settings, onSaveSettings, onClearCache }: 
             isDarkMode ? "bg-black/40 border-white/10 text-gray-200" : "bg-slate-50 border-slate-200 text-slate-800"
           }`}
         >
-          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (Ekonomik / Hızlı - Varsayılan)</option>
-          <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Yeni Nesil Lite)</option>
+          <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Ekonomik / Hızlı - Varsayılan)</option>
+          <option value="gemini-3.5-flash">gemini-3.5-flash (Akıllı & Dengeli - Önerilen)</option>
           <option value="gemini-2.5-flash">gemini-2.5-flash (Dengeli Mod Motoru)</option>
-          <option value="gemini-1.5-pro">gemini-1.5-pro (Maksimum Kalite / Ağır Formüller)</option>
+          <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Maksimum Kalite / Ağır Formüller)</option>
         </select>
         
         {/* Cost Reduction constraints toggle switch */}

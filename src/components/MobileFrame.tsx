@@ -25,7 +25,7 @@ export default function MobileFrame({ children, theme, toggleTheme }: MobileFram
   }, []);
 
   return (
-    <div className={`min-h-screen w-full flex flex-col items-center justify-center p-0 md:p-6 select-none bg-[#030408] text-gray-100 font-sans leading-relaxed`}>
+    <div className={`h-screen h-[100dvh] w-full flex flex-col items-center justify-center p-0 md:p-6 bg-[#030408] text-gray-100 font-sans leading-relaxed overflow-hidden`}>
       
       {/* Background Decorative Ambient Blobs - styled cleanly, not distracting */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translated-y-1/2 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -34,7 +34,7 @@ export default function MobileFrame({ children, theme, toggleTheme }: MobileFram
       {/* Main Emulator Device Frame Wrapper (applied only on tablet/desktop displays) */}
       <div 
         id="android-frame"
-        className={`relative w-full max-w-[420px] h-full md:h-[840px] md:rounded-[48px] md:border-[10px] md:border-[#1E2235] md:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden transition-colors duration-300 ${
+        className={`relative w-full max-w-[420px] h-full max-h-screen md:h-[840px] md:max-h-[840px] md:rounded-[48px] md:border-[10px] md:border-[#1E2235] md:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden transition-colors duration-300 ${
           theme === "dark" 
             ? "bg-[#070913] md:shadow-indigo-900/10" 
             : "bg-slate-50 md:shadow-slate-300"
@@ -84,7 +84,7 @@ export default function MobileFrame({ children, theme, toggleTheme }: MobileFram
         </div>
 
         {/* Main Content Pane (Scrollable Area mimicking native Android screen) */}
-        <div id="screen-content" className="flex-1 w-full flex flex-col overflow-y-auto relative z-10">
+        <div id="screen-content" className="flex-1 w-full flex flex-col overflow-hidden relative z-10">
           {children}
         </div>
 
