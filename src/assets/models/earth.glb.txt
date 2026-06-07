@@ -1,0 +1,25 @@
+# [3D MODEL IMPORT GUIDE] -> earth.glb 🌍
+
+This directory hosts 3D asset files for Socrates YKS Study Hub. You can place your custom high-detail Earth glTF/GLB models here under the name 'earth.glb'.
+
+To import and load this 3D model in React using Three.js / @react-three/fiber:
+
+1. Place your low-poly earth asset in this directory:
+   File location: `/src/assets/models/earth.glb`
+
+2. To support loading GLB files in Vite, ensure you have the `vite-plugin-gltf` or configure resource routing. However, placing the file in the `/public/models/earth.glb` folder makes it easily fetchable using a simple URL path without Vite asset compiling complications!
+   For full offline-first compliance, we recommend putting the model under:
+   `/public/models/earth.glb`
+
+3. Code snippet using @react-three/drei GLTFLoader:
+   ```typescript
+   import { useGLTF } from '@react-three/drei';
+   import { useFrame } from '@react-three/fiber';
+
+   function EarthModel() {
+     const { scene } = useGLTF('/models/earth.glb');
+     return <primitive object={scene} scale={2} />;
+   }
+   ```
+
+To ensure premium rendering, our application falls back dynamically to a high-speed, stylized procedural neon 3D sphere with glowing meridians, vector continental outlines, and active orbital beacons. This guarantees absolute offline reliability, outstanding rendering, zero asset-load lags, and flawless performance on all devices!

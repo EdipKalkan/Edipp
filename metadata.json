@@ -1,0 +1,6 @@
+{
+  "name": "Sokrates Öğrenci Asistanı",
+  "description": "Sade odaklanma zaman sayacı, SQLite yerel veritabanı, PDF destekli yapay zeka soru kartları (YKS flashcards) ve Gemini destekli profesyonel koçluk sunan asistan uygulamanız.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
