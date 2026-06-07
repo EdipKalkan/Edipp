@@ -1,0 +1,88 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - ana
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu indir
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Java kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: Paketleri yükle
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Capacitor paketlerini kur
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Capacitor config oluştur
+        run: |
+          if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ]; then
+            cat > capacitor.config.ts <<'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.sokrates.ogrenciasistani',
+            appName: 'Sokrates Öğrenci Asistanı',
+            webDir: 'dist',
+            server: {
+              androidScheme: 'https'
+            }
+          };
+
+          export default config;
+          EOF
+          fi
+
+      - name: Web uygulamasını build et
+        run: npm run build
+
+      - name: Android platformu ekle
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+
+      - name: Android dosyalarını senkronize et
+        run: npx cap sync android
+
+      - name: Gradle izin ver
+        run: chmod +x android/gradlew
+
+      - name: APK oluştur
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: APK dosyasını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: sokrates-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
